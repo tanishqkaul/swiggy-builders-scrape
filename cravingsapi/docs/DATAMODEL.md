@@ -65,19 +65,65 @@ CREATE TABLE swiggy_tokens (
 );
 ```
 
-### `health_connections`
+### `sahha_connections`
 ```sql
-CREATE TABLE health_connections (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  provider     TEXT NOT NULL CHECK (provider IN ('apple_health', 'google_fit')),
-  access_token TEXT NOT NULL,                    -- encrypted
-  scopes       TEXT[],                           -- e.g. ['sleep', 'steps']
-  connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_sync_at TIMESTAMPTZ,
-  is_active    BOOLEAN NOT NULL DEFAULT true,
-  UNIQUE (user_id, provider)
+-- Replaces health_connections. Sahha handles cross-platform HealthKit/Health Connect.
+CREATE TABLE sahha_connections (
+  user_id            UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  external_id        TEXT NOT NULL UNIQUE,           -- 'cravingsapi_user_{user_id}'
+  profile_token      TEXT NOT NULL,                  -- AES-256-GCM encrypted; used by mobile SDK
+  sensors_granted    TEXT[] DEFAULT '{}',            -- ['sleep', 'heart', 'activity']
+  has_wearable       BOOLEAN NOT NULL DEFAULT false, -- updated when wearable biomarkers return non-null
+  connected_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_biomarker_at  TIMESTAMPTZ,                    -- last successful Sahha biomarker received
+  last_score_at      TIMESTAMPTZ,                    -- last successful Sahha score received
+  -- Set to true when Sahha launches reproductive biomarkers in 2026
+  reproductive_enabled BOOLEAN NOT NULL DEFAULT false,
+  is_active          BOOLEAN NOT NULL DEFAULT true
 );
+```
+
+### `cycle_profiles`
+```sql
+-- Ultra-sensitive. Column-level encryption on all date fields.
+-- Separate RLS policy: only the owning user can read, no admin read without explicit audit log.
+CREATE TABLE cycle_profiles (
+  user_id               UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  last_period_start     DATE NOT NULL,               -- AES-256-GCM encrypted at column level
+  avg_cycle_length      SMALLINT NOT NULL DEFAULT 28, -- 21–45 day range enforced
+  cycle_length_std      DECIMAL(4,2),                -- standard deviation of past cycle lengths
+  tracking_started_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_logged_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  period_entries        INTEGER NOT NULL DEFAULT 1,  -- number of logged periods (accuracy proxy)
+  reminder_enabled      BOOLEAN NOT NULL DEFAULT true,
+  reminder_days_before  SMALLINT NOT NULL DEFAULT 3,  -- remind N days before predicted period
+  -- Sahha confirmation tracking
+  sahha_phase_mismatch_count  SMALLINT DEFAULT 0,    -- consecutive cycles where Sahha contradicted logged phase
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Separate audit log for any admin access to cycle_profiles (legal requirement)
+CREATE TABLE cycle_data_access_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL,
+  accessed_by TEXT NOT NULL,     -- 'user_self' | 'system_prediction' | 'admin_{id}'
+  reason      TEXT,
+  accessed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### `cycle_period_log`
+```sql
+-- Full history of logged period start dates (enables cycle length calculation)
+CREATE TABLE cycle_period_log (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,      -- AES-256-GCM encrypted
+  logged_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  source     TEXT NOT NULL CHECK (source IN ('user_manual', 'system_suggested', 'imported'))
+);
+
+CREATE INDEX idx_period_log_user ON cycle_period_log (user_id, start_date DESC);
 ```
 
 ### `signal_snapshots`
@@ -101,9 +147,35 @@ CREATE TABLE signal_snapshots (
   orders_last_30d SMALLINT,
   avg_order_value INTEGER,                       -- INR paisa
   last_order_hrs  DECIMAL(6,2),
-  -- Health signals (null if not connected)
-  sleep_hours     DECIMAL(4,2),
-  steps_today     INTEGER,
+  -- Sahha scores (no wearable needed — null if Sahha not connected)
+  sahha_sleep_score        DECIMAL(4,3),
+  sahha_readiness_score    DECIMAL(4,3),
+  sahha_mental_wellbeing   DECIMAL(4,3),
+  sahha_activity_score     DECIMAL(4,3),
+  -- Sahha biomarkers — no wearable (null if Sahha not connected)
+  sahha_sleep_duration_min INTEGER,                 -- minutes, from biomarker.sleep_duration
+  sahha_sleep_regularity   DECIMAL(4,3),            -- index 0–1, biomarker.sleep_regularity (weekly)
+  sahha_sleep_debt_hours   DECIMAL(5,2),            -- biomarker.sleep_debt
+  sahha_steps              INTEGER,                 -- biomarker.steps
+  sahha_sedentary_min      INTEGER,                 -- biomarker.activity_sedentary_duration
+  -- Sahha biomarkers — wearable required (null if no wearable detected)
+  sahha_has_wearable       BOOLEAN NOT NULL DEFAULT false,
+  sahha_hrv_sdnn_ms        DECIMAL(6,2),            -- biomarker.heart_rate_variability_sdnn
+  sahha_hrv_rmssd_ms       DECIMAL(6,2),            -- biomarker.heart_rate_variability_rmssd
+  sahha_resting_hr_bpm     DECIMAL(5,2),            -- biomarker.heart_rate_resting
+  sahha_sleep_efficiency   DECIMAL(4,3),            -- biomarker.sleep_efficiency (ratio 0–1)
+  sahha_bbt_celsius        DECIMAL(5,3),            -- biomarker.body_temperature_basal (BBT — gold standard)
+  sahha_bbt_delta          DECIMAL(5,3),            -- delta from user's 14-day BBT baseline
+  sahha_skin_temp_sleep    DECIMAL(5,3),            -- biomarker.skin_temperature_sleep
+  -- Sahha archetypes
+  sahha_sleep_pattern      TEXT,                    -- archetype.sleep_pattern label
+  sahha_activity_level     TEXT,                    -- archetype.activity_level label
+  -- Menstrual cycle signals (null if not tracking)
+  cycle_phase              TEXT CHECK (cycle_phase IN ('menstrual','follicular','ovulatory','luteal')),
+  cycle_day                SMALLINT,
+  days_until_period        SMALLINT,
+  phase_sahha_confirmed    BOOLEAN,
+  phase_confidence_mult    DECIMAL(4,3),
   -- Raw feature vector stored as jsonb for model retraining
   feature_vector  JSONB NOT NULL
 );
@@ -126,8 +198,11 @@ CREATE TABLE predictions (
   confidence      DECIMAL(4,3) NOT NULL,         -- 0.000–1.000
   window_start    TIME,                          -- predicted craving window
   window_end      TIME,
-  model_version   TEXT NOT NULL,                 -- e.g. 'v1.2.0'
-  fallback_used   BOOLEAN NOT NULL DEFAULT false,
+  model_version         TEXT NOT NULL,            -- e.g. 'v1.2.0'
+  fallback_used         BOOLEAN NOT NULL DEFAULT false,
+  cycle_phase           TEXT,                     -- phase at prediction time (denormalized for analytics)
+  cycle_day             SMALLINT,
+  phase_override_applied BOOLEAN NOT NULL DEFAULT false,
   -- Outcome tracking
   notif_fired_at  TIMESTAMPTZ,
   cart_id         TEXT,                          -- Redis cart key
@@ -187,6 +262,9 @@ CREATE INDEX idx_notif_events_user ON notification_events (user_id, occurred_at 
 | `notif_count:{user_id}:{date}` | 24 hr | integer | Daily notification counter |
 | `quiet:{user_id}` | computed | "1" | Set during user quiet hours |
 | `fcm_job:{prediction_id}` | 2 hr | JSON FCM payload | Scheduled notification job |
+| `sahha:{user_id}:signals` | 30 min | JSON SahhaSignals | Cached Sahha biomarker/score fetch |
+| `bbt:{user_id}:series` | 15 days | JSON float[] | Last 14 days of BBT readings for delta computation |
+| `cycle:{user_id}:phase` | 6 hr | JSON CyclePhase | Current computed phase (avoids DB read per signal cycle) |
 
 ---
 
@@ -199,7 +277,10 @@ CREATE INDEX idx_notif_events_user ON notification_events (user_id, occurred_at 
 | `orders` | Indefinite | Legal + accounting |
 | `notification_events` | 90 days | CTR/conversion analytics |
 | `swiggy_tokens` | Until revoked | Required for API calls |
-| `health_connections` | Until user disconnects | Opt-in |
+| `sahha_connections` | Until user disconnects | Opt-in |
+| **`cycle_profiles`** | **Until user explicitly deletes** | **Sensitive — never auto-purged** |
+| **`cycle_period_log`** | **Until user explicitly deletes** | **Same — user owns this data** |
+| **`cycle_data_access_log`** | **3 years** | **Legal/compliance audit trail** |
 | Redis carts | 90 min TTL | Auto-expires |
 
 ---
@@ -208,9 +289,12 @@ CREATE INDEX idx_notif_events_user ON notification_events (user_id, occurred_at 
 
 - `phone_hash` stored instead of raw phone — one-way SHA-256
 - `swiggy_tokens.access_token` and `refresh_token` — AES-256-GCM encrypted with per-row IV, key stored in Railway secret (not in DB)
-- `health_connections.access_token` — same encryption
-- `feature_vector` JSONB contains no PII — only aggregated behavioral metrics
-- On account deletion (`deleted_at` set): `swiggy_tokens` row deleted immediately, `health_connections` rows deleted, `signal_snapshots.feature_vector` zeroed out, other records retained for 30 days then purged by cron
+- `sahha_connections.profile_token` — same encryption as swiggy tokens
+- **`cycle_profiles.last_period_start`** — **column-level AES-256-GCM encryption, separate encryption key (`CYCLE_DATA_KEY`) from the main token key**
+- **`cycle_period_log.start_date`** — same column-level encryption
+- `feature_vector` JSONB contains no PII — only aggregated behavioral metrics. The `cycle_phase` field in signal_snapshots is a category label (not a date) and is not considered PII.
+- On account deletion (`deleted_at` set): `swiggy_tokens` deleted immediately, `sahha_connections` deleted (triggers Sahha profile deletion via API), `signal_snapshots.feature_vector` zeroed — other records retained for 30 days then purged by cron
+- **On cycle data deletion (independent of account deletion):** `cycle_profiles` hard-deleted within 24 hours, `cycle_period_log` hard-deleted within 24 hours, `signal_snapshots.cycle_phase` and related columns set to NULL, `cycle_data_access_log` retained 3 years per compliance requirement
 
 ---
 

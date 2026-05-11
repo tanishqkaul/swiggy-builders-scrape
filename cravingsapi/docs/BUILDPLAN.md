@@ -19,9 +19,11 @@
 ### Hour 0–1: Setup
 - [ ] `git init` + monorepo structure
 - [ ] Railway project created, env vars set
-- [ ] Supabase project created, schema migrated
+- [ ] Supabase project created, schema migrated (includes `cycle_profiles`, `sahha_connections`)
 - [ ] Upstash Redis provisioned
 - [ ] Swiggy MCP credentials obtained, basic auth tested
+- [ ] **Sahha account created at app.sahha.ai → App ID + App Secret obtained**
+- [ ] **Sahha webhook URL registered: `https://api.cravingsapi.app/webhooks/sahha`**
 - [ ] Expo app initialized with navigation skeleton
 
 ### Hour 1–4: Phase 0 — Auth + MCP Connection
@@ -33,14 +35,16 @@
 
 **Milestone check:** Curl against API returns last 10 Swiggy orders for the test account.
 
-### Hour 4–8: Phase 1 — Signal Engine
+### Hour 4–8: Phase 1 — Signal Engine + Sahha + Cycle
 - [ ] `weather.py` — OpenWeatherMap current + forecast
-- [ ] `signal_service.py` — fan-out to all sources, normalize
-- [ ] Feature engineering pipeline (`ml/inference/feature_pipeline.py`)
-- [ ] `signal_snapshots` table being written every 15 minutes
-- [ ] Health signals stubbed out (returns 0/null) — real connection is Phase 6
+- [ ] **`sahha.py` — Sahha profile registration + biomarker fetch (sleep_score, readiness, HRV, resting_hr)**
+- [ ] **`cycle_service.py` — phase computation from `cycle_profiles`, `get_sahha_phase_confidence()`**
+- [ ] `signal_service.py` — fan-out to all sources including Sahha + cycle, normalize
+- [ ] Feature engineering pipeline (`ml/inference/feature_pipeline.py`) — updated to 95-dim
+- [ ] `signal_snapshots` table being written every 15 minutes with Sahha + cycle columns
+- [ ] **Demo: manually set `cycle_profiles.last_period_start` for demo user to day 20 → phase = luteal**
 
-**Milestone check:** `/signals/latest` returns a 72-dim feature vector for the test user.
+**Milestone check:** `/signals/latest` returns a 95-dim feature vector showing `cycle_phase=luteal`, Sahha scores populated for the test user.
 
 ### Hour 8–14: Phase 2 — Prediction Core
 - [ ] Rule-based fallback predictor (most-ordered item at current hour × weekday from history)
@@ -74,12 +78,15 @@
 
 ### Hour 22–30: Phase 5 — Mobile UI
 - [ ] `PredictionCard.tsx` with confidence bar
+- [ ] **`CyclePhaseCard.tsx` above PredictionCard — phase name, day count, progress bar in phase color**
+- [ ] **`PeriodLogSheet.tsx` — date picker for logging period start**
 - [ ] `OrderConfirmSheet.tsx` with countdown
 - [ ] Home screen with today's prediction
-- [ ] Onboarding: location → notifications → Swiggy auth
+- [ ] Onboarding: location → Swiggy auth → **Sahha connect → cycle date (optional)**
 - [ ] History screen: past predictions vs actual orders
 - [ ] `StreakBadge` gamification
-- [ ] Dark theme applied consistently
+- [ ] **Settings → Cycle Tracking section with log/delete options**
+- [ ] Dark theme applied consistently with phase-specific accent colors
 
 ### Hour 30–36: Phase 6 — Polish + Demo
 - [ ] Seed 90 days of synthetic order history for demo account
@@ -91,35 +98,47 @@
 
 ---
 
-## Demo Script (60 seconds)
+## Demo Script (90 seconds — cycle feature is the reveal)
 
 ```
-[0:00] "I order Swiggy every day. But I always figure out what I want too late."
+[0:00] "Every app predicts what you'll order based on what you ordered before.
+        That's table stakes."
 
-[0:08] "CravingsAPI predicts what you'll crave — before you're hungry."
+[0:06] "CravingsAPI goes deeper."
 
-[0:14] Open app → show home screen with today's prediction:
-       "Chicken Biryani · Behrouz Biryani · 87% confident"
+[0:10] Open app → show home screen.
+       CyclePhaseCard visible at top: "🌙 Luteal Phase · Day 22 · 6 days until period"
+       PredictionCard below: "Dark Chocolate Maggi · Swiggy Instamart · 91% confident"
 
-[0:20] "It's 7:15 PM on a rainy Thursday. Here's why it predicted this:"
-       → tap prediction → signal detail view
-       → show: weather (rainy), day (Thu), past orders highlight
+[0:18] "Our demo user is in her luteal phase — day 22.
+        Progesterone is peaking. Carb and chocolate cravings are physiologically inevitable."
 
-[0:32] "Now watch what happens."
-       → switch to notification → receive push on device live
-       "You'll probably want Biryani around 8 PM — tap to pre-order"
+[0:26] Tap prediction → signal detail view.
+       Show: [Luteal Phase +61%] [Rainy evening +18%] [Ordered comfort food 8 Tuesdays +22%]
+       "The cycle phase is the single biggest contributor to tonight's prediction."
 
-[0:42] Tap notification → OrderConfirmSheet slides up
-       → 5-second countdown
-       → tap Confirm
+[0:38] "We use Sahha.ai to cross-reference her biomarkers —"
+       → show Sahha panel: Readiness 38% · HRV 29ms · Sleep score 0.52
+       "— low readiness, low HRV. Her body is confirming the phase.
+        Confidence goes from 75% to 91%."
 
-[0:52] "Order placed." → show Swiggy order confirmation screen
+[0:50] "Now watch."
+       → notification arrives on device:
+       "Comfort mode: on. Dark Chocolate Maggi is ready 🍫"
 
-[0:58] "This works because Swiggy MCP gives us real menu data,
-        real order history, and real cart placement. Not a mockup."
+[0:58] Tap → OrderConfirmSheet → Confirm.
+       "Order placed."
 
-[1:00] Done.
+[1:05] "This is not a generic food app.
+        It's the first food prediction system that understands your body."
+
+[1:10] "Built on Swiggy MCP for real orders, Sahha.ai for health intelligence,
+        and a behavioral model trained to know you better than you know yourself."
+
+[1:18] Done.
 ```
+
+**Pre-demo setup:** Set demo user's `last_period_start` to 22 days ago. Pre-seed Sahha mock biomarkers (readiness 0.38, HRV 29ms, sleep_score 0.52). Pre-build cart for dark chocolate Maggi via Instamart MCP. Trigger notification 2 minutes before demo starts.
 
 ---
 
@@ -137,12 +156,13 @@
 
 ## Post-Hackathon Roadmap
 
-| Feature | Effort | Value |
-|---|---|---|
-| Real HealthKit integration | M | High (accuracy++) |
-| Per-user model fine-tuning | L | High |
-| Group order prediction (couples, families) | M | Medium |
-| Menstrual cycle tracking (opt-in, female users) | L | High controversy, high accuracy |
-| WhatsApp delivery of notification | S | High (distribution) |
-| B2B API (restaurants pay for demand prediction) | L | High (monetization) |
-| Apple Watch complication | M | High (viral) |
+| Feature | Effort | Value | Notes |
+|---|---|---|---|
+| Per-user model fine-tuning | L | High | After 500+ users with 30d history |
+| Wearable pairing incentive (Apple Watch/Fitbit) | S | High | Unlocks BBT, HRV — biggest accuracy jump |
+| Sahha reproductive biomarkers (2026) | S | Critical | When Sahha launches `menstrual_phase` — replaces self-report, zero UI change |
+| Group order prediction (couples, families) | M | Medium | Shared cycle-aware household prediction |
+| WhatsApp delivery of notification | S | High | Distribution — where Indian users live |
+| B2B API (restaurants pay for demand prediction) | L | High | Cycle-phase demand signals are commercially unique |
+| Apple Watch complication | M | High | BBT + phase display on wrist |
+| Dineout ovulatory phase suggestions | S | Medium | Use `fertile_window_start_date` from Sahha 2026 biomarkers |

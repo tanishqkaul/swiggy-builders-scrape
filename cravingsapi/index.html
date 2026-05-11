@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CravingsAPI - Your Body Knows What You Want</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0e17 0%, #1a1825 100%);
+            color: #e7e5e4;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            background: rgba(15, 14, 23, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #9070c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links a {
+            color: #a8a29e;
+            text-decoration: none;
+            margin-left: 40px;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #6366f1;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        /* HERO */
+        .hero {
+            text-align: center;
+            padding: 120px 0;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .hero .highlight {
+            background: linear-gradient(135deg, #6366f1, #9070c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: #a8a29e;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #6366f1;
+            color: #6366f1;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* PROBLEM SECTION */
+        .problem {
+            background: rgba(26, 24, 37, 0.8);
+            border-radius: 20px;
+            padding: 60px;
+            margin-bottom: 80px;
+        }
+
+        .problem h2 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .problem-text p {
+            font-size: 18px;
+            color: #a8a29e;
+            margin-bottom: 20px;
+        }
+
+        .problem-highlight {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stat {
+            padding: 20px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 12px;
+            border-left: 4px solid #6366f1;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #6366f1;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #a8a29e;
+            margin-top: 5px;
+        }
+
+        /* CYCLE SECTION */
+        .cycle-section {
+            margin-bottom: 80px;
+        }
+
+        .cycle-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .cycle-intro {
+            text-align: center;
+            font-size: 18px;
+            color: #a8a29e;
+            max-width: 700px;
+            margin: 0 auto 80px;
+        }
+
+        .cycle-phases {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 60px;
+        }
+
+        .phase-card {
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .phase-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .phase-menstrual {
+            background: linear-gradient(135deg, #e07070, #d65a5a);
+        }
+
+        .phase-follicular {
+            background: linear-gradient(135deg, #70c8b8, #5ab8a8);
+        }
+
+        .phase-ovulatory {
+            background: linear-gradient(135deg, #f0b840, #e0a830);
+        }
+
+        .phase-luteal {
+            background: linear-gradient(135deg, #9070c0, #8060b0);
+        }
+
+        .phase-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .phase-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .phase-day {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+
+        .phase-craving {
+            font-size: 14px;
+            opacity: 0.95;
+            line-height: 1.5;
+        }
+
+        /* HOW IT WORKS */
+        .how-it-works {
+            margin-bottom: 80px;
+        }
+
+        .how-it-works h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+
+        .step {
+            background: rgba(26, 24, 37, 0.8);
+            border-radius: 16px;
+            padding: 40px 30px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            position: relative;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -15px;
+            left: 30px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6366f1, #9070c0);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 18px;
+        }
+
+        .step h3 {
+            font-size: 20px;
+            margin: 20px 0 15px 0;
+        }
+
+        .step p {
+            font-size: 16px;
+            color: #a8a29e;
+            line-height: 1.6;
+        }
+
+        /* FEATURES */
+        .features {
+            background: rgba(26, 24, 37, 0.8);
+            border-radius: 20px;
+            padding: 60px;
+            margin-bottom: 80px;
+        }
+
+        .features h2 {
+            font-size: 36px;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+        }
+
+        .feature-item {
+            display: flex;
+            gap: 20px;
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            min-width: 40px;
+        }
+
+        .feature-content h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .feature-content p {
+            font-size: 14px;
+            color: #a8a29e;
+            line-height: 1.6;
+        }
+
+        /* TECH STACK */
+        .tech-stack {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .tech-stack h2 {
+            font-size: 36px;
+            margin-bottom: 50px;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 30px;
+        }
+
+        .tech-item {
+            background: rgba(26, 24, 37, 0.8);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .tech-label {
+            font-size: 12px;
+            color: #a8a29e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .tech-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #6366f1;
+        }
+
+        /* DEMO MOMENT */
+        .demo {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(144, 112, 192, 0.1));
+            border-radius: 20px;
+            padding: 60px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            margin-bottom: 80px;
+        }
+
+        .demo h2 {
+            font-size: 36px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .demo-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .demo-text p {
+            font-size: 16px;
+            color: #a8a29e;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .demo-highlight {
+            background: rgba(99, 102, 241, 0.2);
+            padding: 20px;
+            border-left: 4px solid #6366f1;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #6366f1;
+            font-weight: 600;
+        }
+
+        .mockup {
+            background: rgba(26, 24, 37, 0.8);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .phone-frame {
+            font-size: 14px;
+            color: #a8a29e;
+            line-height: 1.8;
+        }
+
+        /* CTA SECTION */
+        .cta-final {
+            text-align: center;
+            padding: 80px 0;
+        }
+
+        .cta-final h2 {
+            font-size: 42px;
+            margin-bottom: 20px;
+        }
+
+        .cta-final p {
+            font-size: 18px;
+            color: #a8a29e;
+            margin-bottom: 40px;
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px 0;
+            text-align: center;
+            color: #a8a29e;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .cycle-phases,
+            .steps,
+            .features-grid,
+            .demo-content,
+            .problem-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links a {
+                margin-left: 20px;
+                font-size: 12px;
+            }
+
+            section {
+                padding: 40px 0;
+            }
+
+            .problem,
+            .features,
+            .demo {
+                padding: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">🍜 CravingsAPI</div>
+                <div class="nav-links">
+                    <a href="#problem">Problem</a>
+                    <a href="#cycle">Cycle</a>
+                    <a href="#how">How It Works</a>
+                    <a href="#tech">Tech</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- HERO -->
+        <section class="hero">
+            <div class="container">
+                <h1>You'll know what you want<br><span class="highlight">before you're hungry</span></h1>
+                <p>AI that understands your menstrual cycle predicts your cravings and delivers a one-tap order at the perfect moment.</p>
+                <div class="cta-buttons">
+                    <button class="btn btn-primary">See the Demo</button>
+                    <button class="btn btn-secondary">Learn More</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEM -->
+        <section id="problem">
+            <div class="container">
+                <div class="problem">
+                    <div class="problem-grid">
+                        <div>
+                            <h2>The Real Problem</h2>
+                            <p>Every day, women order food on Swiggy while <span class="problem-highlight">hungry and tired</span> from decision fatigue.</p>
+                            <p>They spend 15 minutes browsing, make suboptimal choices, and feel regret after eating.</p>
+                            <p>But here's what nobody talks about: <span class="problem-highlight">what you want to eat changes throughout your menstrual cycle.</span></p>
+                            <p style="margin-top: 30px; color: #f59e0b; font-weight: 600;">The luteal phase (days 17–28) drives carb and comfort food cravings at 40% higher intensity than your baseline.</p>
+                        </div>
+                        <div class="stats">
+                            <div class="stat">
+                                <div class="stat-number">40%</div>
+                                <div class="stat-label">Higher craving intensity in luteal phase</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number">15 min</div>
+                                <div class="stat-label">Average browse time before ordering</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number">5–6×/week</div>
+                                <div class="stat-label">Average Swiggy orders (India)</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number">0 apps</div>
+                                <div class="stat-label">Account for cycle-driven cravings</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CYCLE SECTION -->
+        <section id="cycle" class="cycle-section">
+            <div class="container">
+                <h2>Your Menstrual Cycle Changes Everything</h2>
+                <p class="cycle-intro">
+                    Progesterone, estrogen, and prostaglandins fluctuate throughout your cycle. These hormones directly control appetite, food preference, and craving intensity. CravingsAPI predicts what you'll want based on where you are in your cycle.
+                </p>
+                <div class="cycle-phases">
+                    <div class="phase-card phase-menstrual">
+                        <div class="phase-icon">🩸</div>
+                        <div class="phase-name">Menstrual</div>
+                        <div class="phase-day">Days 1–5</div>
+                        <div class="phase-craving">Warm comfort food, iron-rich meals, chocolate. Prostaglandins crave easy-to-digest warmth.</div>
+                    </div>
+                    <div class="phase-card phase-follicular">
+                        <div class="phase-icon">🌱</div>
+                        <div class="phase-name">Follicular</div>
+                        <div class="phase-day">Days 6–13</div>
+                        <div class="phase-craving">Light, fresh meals. Rising estrogen suppresses appetite and increases energy.</div>
+                    </div>
+                    <div class="phase-card phase-ovulatory">
+                        <div class="phase-icon">⚡</div>
+                        <div class="phase-name">Ovulatory</div>
+                        <div class="phase-day">Days 14–16</div>
+                        <div class="phase-craving">Social eating, restaurants, protein. Peak energy and social appetite.</div>
+                    </div>
+                    <div class="phase-card phase-luteal">
+                        <div class="phase-icon">🍫</div>
+                        <div class="phase-name">Luteal</div>
+                        <div class="phase-day">Days 17–28</div>
+                        <div class="phase-craving"><strong>Carbs, chocolate, comfort food.</strong> Progesterone drives intense cravings. Peak predictability.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOW IT WORKS -->
+        <section id="how" class="how-it-works">
+            <div class="container">
+                <h2>How CravingsAPI Works</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h3>You Connect</h3>
+                        <p>Link your Swiggy account for order history. Optionally connect Sahha.ai to provide biomarkers (sleep, HRV, readiness, resting heart rate) for phase confirmation.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h3>You Log Your Cycle</h3>
+                        <p>Tell us when your period starts. Our system computes your current phase. Sahha biomarkers confirm the phase with 95%+ accuracy.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h3>We Predict</h3>
+                        <p>Every 15 minutes, our AI analyzes: your order history, cycle phase, weather, time of day, and Sahha biomarkers. It predicts what you'll crave with 87% top-1 accuracy in luteal phase.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section class="features">
+            <div class="container">
+                <h2>Powerful Features</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🔔</div>
+                        <div class="feature-content">
+                            <h3>Smart Notifications</h3>
+                            <p>Get a push 45 minutes before your predicted craving window. The cart is pre-built. One tap confirms.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-content">
+                            <h3>Cycle Phase Signals</h3>
+                            <p>Your menstrual phase is the single biggest predictor of food choice. We account for it explicitly.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">❤️</div>
+                        <div class="feature-content">
+                            <h3>Sahha Biomarkers</h3>
+                            <p>Sleep score, HRV, readiness, resting HR — we use wearable data to confirm your phase physiologically.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🎯</div>
+                        <div class="feature-content">
+                            <h3>One-Tap Ordering</h3>
+                            <p>Pre-built cart, instant confirmation. No browsing. No decision fatigue. Order in under 30 seconds.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔐</div>
+                        <div class="feature-content">
+                            <h3>Privacy-First</h3>
+                            <p>Menstrual data is encrypted separately. Column-level encryption. Access is audit-logged.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📈</div>
+                        <div class="feature-content">
+                            <h3>Streak Gamification</h3>
+                            <p>See your prediction accuracy streak. Weekly roasts. Fun celebration of eating mindfully.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TECH STACK -->
+        <section id="tech" class="tech-stack">
+            <div class="container">
+                <h2>Powered By</h2>
+                <div class="tech-grid">
+                    <div class="tech-item">
+                        <div class="tech-label">Order Data</div>
+                        <div class="tech-name">Swiggy MCP</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-label">Health Signals</div>
+                        <div class="tech-name">Sahha.ai</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-label">ML Engine</div>
+                        <div class="tech-name">XGBoost</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-label">Mobile</div>
+                        <div class="tech-name">React Native</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-label">Backend</div>
+                        <div class="tech-name">FastAPI</div>
+                    </div>
+                    <div class="tech-item">
+                        <div class="tech-label">Notifications</div>
+                        <div class="tech-name">Firebase FCM</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DEMO MOMENT -->
+        <section class="demo">
+            <div class="container">
+                <h2>The Demo Moment</h2>
+                <div class="demo-content">
+                    <div class="demo-text">
+                        <p><strong>User is in day 22 of her cycle (luteal phase).</strong></p>
+                        <p>Sahha provides: readiness 38%, HRV 29ms, sleep quality disrupted, resting HR +3bpm. All signals confirm luteal.</p>
+                        <div class="demo-highlight">
+                            🔮 Prediction: Dark Chocolate Maggi · 91% confident
+                        </div>
+                        <p>She receives a notification: <em>"Comfort mode: on. Dark Chocolate Maggi is ready 🍫"</em></p>
+                        <p>She taps. One-tap confirm sheet appears. 5-second countdown. She confirms.</p>
+                        <p><strong>Order placed in 8 seconds.</strong></p>
+                        <p style="margin-top: 20px; font-size: 14px; color: #a8a29e;">
+                            This is not a generic food app. It's the first food prediction system that understands your body's monthly rhythm.
+                        </p>
+                    </div>
+                    <div class="mockup">
+                        <div class="phone-frame">
+                            <div style="margin: 20px 0;">📱 PHONE SCREEN</div>
+                            <div style="background: rgba(15, 14, 23, 0.9); border-radius: 12px; padding: 20px; margin: 15px 0;">
+                                <div style="color: #9070c0; font-weight: 600; font-size: 12px; margin-bottom: 5px;">🌙 LUTEAL PHASE · DAY 22</div>
+                                <div style="margin: 15px 0;">
+                                    <div style="font-size: 28px; margin-bottom: 10px;">🍫</div>
+                                    <div style="font-size: 16px; font-weight: 600;">Dark Chocolate Maggi</div>
+                                    <div style="font-size: 12px; color: #a8a29e; margin-top: 5px;">Swiggy Instamart · 2.1 km</div>
+                                </div>
+                                <div style="margin: 20px 0; text-align: left;">
+                                    <div style="color: #9070c0; font-weight: 600; font-size: 11px;">WHY THIS?</div>
+                                    <div style="font-size: 11px; color: #a8a29e; margin-top: 5px; line-height: 1.6;">
+                                        Luteal phase +61% · Readiness 38% · HRV confirms late luteal
+                                    </div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, #6366f1, #9070c0); color: white; padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: 600; font-size: 14px; cursor: pointer;">
+                                    Confirm (5s)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL CTA -->
+        <section class="cta-final">
+            <div class="container">
+                <h2>Ready to Predict?</h2>
+                <p>CravingsAPI is built for Swiggy. Powered by the Swiggy MCP ecosystem.</p>
+                <div class="cta-buttons">
+                    <button class="btn btn-primary">Download the App</button>
+                    <button class="btn btn-secondary">View Docs</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Made for <strong>Swiggy Builders Club</strong> • Leveraging Swiggy MCP + Sahha.ai • Focus: Women's Food & Cycle Science</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Button interactions
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.style.opacity = '0.8';
+                setTimeout(() => {
+                    this.style.opacity = '1';
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>

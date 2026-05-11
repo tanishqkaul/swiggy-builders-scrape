@@ -37,9 +37,18 @@
            │  Aggregator  │       │  Scheduler       │
            │              │       │                  │
            │ - Weather API│       │ Firebase FCM     │
-           │ - HealthKit  │       │ + Redis queues   │
-           │ - Google Fit │       └──────────────────┘
-           │ - Time/Day   │
+           │ - Sahha.ai   │◄──────│ + Redis queues   │
+           │ - Time/Day   │       └──────────────────┘
+           │ - Cycle Svc  │
+           └──────┬───────┘
+                  │
+           ┌──────▼───────┐
+           │  Cycle       │
+           │  Service     │
+           │              │
+           │ - Phase det  │
+           │ - Sahha conf │
+           │ - Period log │
            └──────────────┘
 ```
 
@@ -70,10 +79,21 @@
 **Sources:**
 - Swiggy MCP (order history, last 180 days)
 - OpenWeatherMap (current conditions + 3h forecast at user location)
-- Apple HealthKit / Google Fit REST (sleep hours, steps — opt-in)
+- **Sahha.ai REST API** (processed biomarkers: HRV, resting HR, sleep score, readiness, mental wellbeing — replaces raw HealthKit/Fit)
+- **Cycle Service** (current phase, cycle day, days until period, Sahha phase confirmation)
 - Computed: time-of-day bucket, day-of-week, days-since-last-order, streak data
-**Output:** A flat feature vector fed into the prediction engine.
+**Output:** A 95-dim feature vector fed into the prediction engine.
 **Schedule:** Runs every 15 minutes per active user via Redis-backed job queue.
+
+### 4B. Cycle Service (`/src/services/cycle/`)
+**Responsibility:** Manage menstrual cycle tracking data — compute current phase, confirm phase against Sahha biomarkers, handle period logging, send reminder notifications.
+**Storage:** `cycle_profiles`, `cycle_period_log` tables (column-level encrypted).
+**Key operations:**
+- `get_current_phase(user_id)` → CyclePhase with day, phase name, days until next period
+- `confirm_phase_with_sahha(phase, sahha_biomarkers)` → phase_confidence_multiplier
+- `log_period_start(user_id, date)` → upsert cycle_profiles, append cycle_period_log
+- `maybe_suggest_period_start(user_id, sahha_signals)` → triggers nudge if biomarkers pattern matches period onset
+**Privacy:** All DB reads to this service are logged to `cycle_data_access_log`.
 
 ### 5. Prediction Engine (`/src/ml/`)
 **Responsibility:** Given a feature vector, output (item_id, confidence, eta_minutes) — the predicted craving with its confidence score and the optimal notification delivery window.

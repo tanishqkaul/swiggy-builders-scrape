@@ -50,9 +50,12 @@ apps/mobile/
 │       └── prediction-detail.tsx # Why CravingsAPI predicted this
 ├── components/
 │   ├── PredictionCard.tsx       # The hero card showing predicted item + confidence
+│   ├── CyclePhaseCard.tsx       # Phase indicator card shown above PredictionCard (opt-in users)
+│   ├── CyclePhaseBar.tsx        # 28-day progress bar with phase color zones
+│   ├── PeriodLogSheet.tsx       # Bottom sheet for logging period start date
 │   ├── OrderConfirmSheet.tsx    # Bottom sheet for order confirmation + 5s countdown
 │   ├── StreakBadge.tsx          # Gamification — prediction accuracy streak
-│   ├── SignalDebugPanel.tsx     # Dev-only: shows raw signals used for prediction
+│   ├── SignalDebugPanel.tsx     # Dev-only: shows raw signals including Sahha scores + cycle phase
 │   ├── FoodItemCard.tsx         # Menu item display with macro info
 │   └── ui/
 │       ├── Button.tsx           # Design system button variants
@@ -64,7 +67,8 @@ apps/mobile/
 │   ├── usePrediction.ts         # Fetches latest prediction for current user
 │   ├── useOrderCart.ts          # Manages pre-built cart state + confirm flow
 │   ├── useSwiggyAuth.ts         # OAuth flow, token storage in SecureStore
-│   ├── useHealthSignals.ts      # HealthKit/Google Fit data access
+│   ├── useSahha.ts              # Sahha SDK init, sensor enable, profile token management
+│   ├── useCyclePhase.ts         # Fetches current cycle phase + days info from backend
 │   ├── useLocation.ts           # Location permission + current coords
 │   └── useNotifications.ts      # FCM registration, notification handler
 ├── services/
@@ -132,30 +136,34 @@ services/api/
 │   ├── predictions.py           # GET /predictions/latest, /predictions/history
 │   ├── orders.py                # POST /orders/confirm, GET /orders/{id}/status
 │   ├── signals.py               # GET /signals/latest (debug endpoint)
-│   └── webhooks.py              # POST /webhooks/fcm — notification event tracking
+│   ├── cycle.py                 # POST /cycle/period, GET /cycle/current-phase, DELETE /cycle/data
+│   └── webhooks.py              # POST /webhooks/fcm, POST /webhooks/sahha (HMAC-verified)
 │
 ├── services/
 │   ├── auth_service.py          # Swiggy OAuth exchange, JWT issue/verify, token refresh
 │   ├── user_service.py          # User CRUD, preference management
-│   ├── signal_service.py        # Orchestrates signal collection from all sources
-│   ├── prediction_service.py    # Calls ML inference, applies threshold, stores result
-│   ├── notification_service.py  # Schedules FCM, manages quiet hours, rate limits
+│   ├── signal_service.py        # Orchestrates signal collection from all sources (Swiggy + weather + Sahha + cycle)
+│   ├── prediction_service.py    # Calls ML inference, applies phase override layer, stores result
+│   ├── notification_service.py  # Schedules FCM, manages quiet hours, rate limits, cycle-aware copy selection
 │   ├── order_service.py         # Pre-builds Swiggy cart, places order via MCP client
+│   ├── cycle_service.py         # Menstrual cycle phase computation, Sahha phase confirmation, period logging
 │   └── scheduler.py             # APScheduler jobs — 15min prediction cycle per user
 │
 ├── integrations/
 │   ├── swiggy_mcp.py            # Swiggy MCP client — auth headers, all endpoint calls
 │   ├── weather.py               # OpenWeatherMap client — current + forecast
 │   ├── fcm.py                   # Firebase Admin SDK wrapper — send, track
-│   ├── healthkit.py             # Apple HealthKit REST API client
-│   └── google_fit.py            # Google Fit REST API client
+│   └── sahha.py                 # Sahha.ai client — profile register, biomarker fetch, webhook verify
 │
 ├── models/
 │   ├── user.py                  # SQLAlchemy User model
-│   ├── prediction.py            # SQLAlchemy Prediction model (stored predictions)
-│   ├── signal_snapshot.py       # SQLAlchemy SignalSnapshot (feature vector per run)
+│   ├── prediction.py            # SQLAlchemy Prediction model (stored predictions, includes cycle_phase)
+│   ├── signal_snapshot.py       # SQLAlchemy SignalSnapshot (feature vector per run, includes Sahha + cycle fields)
 │   ├── order.py                 # SQLAlchemy Order model (placed orders)
-│   └── notification_event.py   # SQLAlchemy NotificationEvent (open/dismiss/convert)
+│   ├── notification_event.py   # SQLAlchemy NotificationEvent (open/dismiss/convert)
+│   ├── sahha_connection.py      # SQLAlchemy SahhaConnection model
+│   ├── cycle_profile.py         # SQLAlchemy CycleProfile model (encrypted date fields, audit hook)
+│   └── cycle_period_log.py      # SQLAlchemy CyclePeriodLog model
 │
 ├── schemas/
 │   ├── auth.py                  # Pydantic request/response schemas for auth

@@ -6,10 +6,52 @@
 |---|---|---|---|
 | Swiggy access tokens | Exfiltration from DB breach | Low (encrypted) | Critical |
 | User order history | Unauthorized read | Low (RLS enforced) | High |
-| Health signals | Exfiltration | Low (never stored raw) | High |
+| **Menstrual cycle dates** | **Exfiltration or unauthorized read** | **Low (column-encrypted + audit log)** | **CRITICAL — legal/personal safety risk** |
+| Sahha biomarkers | Exfiltration | Low (never stored raw, processed only) | High |
 | FCM tokens | Spoofed notifications | Low (JWT-gated API) | Medium |
 | JWT tokens | Stolen from device | Low (SecureStore) | High |
 | PII (name, phone) | Data breach | Low | High |
+
+---
+
+## Menstrual Data — Special Category
+
+Menstrual cycle data is a **special category of personal data** under DPDP Act 2023 (India) and GDPR (Article 9). Treat it with the highest possible care.
+
+### Separate Encryption Key
+Cycle data uses its own encryption key (`CYCLE_DATA_KEY`) stored separately in Railway secrets from the main `TOKEN_ENCRYPTION_KEY`. A breach of one key does not expose the other. Key rotation is independent.
+
+### Column-Level Encryption
+`cycle_profiles.last_period_start` and `cycle_period_log.start_date` are encrypted **before writing to the database** at the application layer — not just at rest by the DB provider. Even a full DB dump reveals only ciphertext for these columns.
+
+```python
+# services/cycle/crypto.py
+def encrypt_date(d: date) -> str:
+    """AES-256-GCM encrypt a date. Returns base64-encoded ciphertext:nonce."""
+    key = settings.CYCLE_DATA_KEY  # 32-byte key from Railway env
+    nonce = os.urandom(12)
+    aesgcm = AESGCM(key)
+    ct = aesgcm.encrypt(nonce, d.isoformat().encode(), None)
+    return base64.b64encode(nonce + ct).decode()
+
+def decrypt_date(ciphertext: str) -> date:
+    raw = base64.b64decode(ciphertext)
+    nonce, ct = raw[:12], raw[12:]
+    plaintext = AESGCM(settings.CYCLE_DATA_KEY).decrypt(nonce, ct, None)
+    return date.fromisoformat(plaintext.decode())
+```
+
+### Access Audit Log
+Every read of `cycle_profiles` or `cycle_period_log` by any service is recorded in `cycle_data_access_log`. This includes:
+- The prediction engine reading cycle phase during signal collection (`system_prediction`)
+- The user reading their own cycle history (`user_self`)
+- Any future admin access requires a separate `CYCLE_ADMIN_KEY` and must log a reason
+
+### No Third-Party Exposure
+Cycle phase is **never** sent to Swiggy MCP, OpenWeatherMap, Firebase FCM, or any external service. The phase override is applied entirely server-side. FCM notification payload contains only: item name, restaurant name — no health or cycle references.
+
+### Notification Privacy
+Push notifications never reference the cycle directly. Copy uses food-centric language only ("Comfort food time 🍫") — not "It's your luteal phase" or any health reference. This protects users whose notifications may be seen by others.
 
 ---
 

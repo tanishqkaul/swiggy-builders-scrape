@@ -21,6 +21,7 @@ CravingsAPI is a mobile-first application that learns your eating patterns — o
 | [prds/PRD-003-NOTIFICATIONS.md](prds/PRD-003-NOTIFICATIONS.md) | Push notification system, timing logic, copy |
 | [prds/PRD-004-ONBOARDING.md](prds/PRD-004-ONBOARDING.md) | User onboarding, permissions, data consent |
 | [prds/PRD-005-ONE-TAP-ORDER.md](prds/PRD-005-ONE-TAP-ORDER.md) | One-tap order flow, cart pre-fill, confirm UX |
+| [prds/PRD-006-MENSTRUAL-CYCLE.md](prds/PRD-006-MENSTRUAL-CYCLE.md) | **Core differentiator** — cycle tracking, Sahha integration, phase override system |
 
 ### Engineering
 | File | Purpose |
@@ -53,13 +54,14 @@ CravingsAPI is a mobile-first application that learns your eating patterns — o
 |---|---|
 | Mobile | React Native + Expo |
 | Backend API | Python / FastAPI |
-| Prediction Engine | Python / scikit-learn → ONNX |
+| Prediction Engine | Python / XGBoost → ONNX (95-dim feature vector) |
 | Primary DB | PostgreSQL (Supabase) |
 | Cache / Queue | Redis (Upstash) |
 | Push Notifications | Firebase Cloud Messaging |
 | Swiggy Data | Swiggy MCP (Food + Instamart + Dineout) |
 | Weather | OpenWeatherMap API |
-| Health Signals | Apple HealthKit / Google Fit (opt-in) |
+| **Health & Biomarkers** | **Sahha.ai** (cross-platform HealthKit + Health Connect, processed biomarkers) |
+| **Menstrual Cycle** | **User self-report + Sahha biomarker phase confirmation** |
 | Auth | Supabase Auth + Swiggy OAuth2 |
 | Hosting | Railway (API) + Vercel (web) + Expo EAS (mobile) |
 
